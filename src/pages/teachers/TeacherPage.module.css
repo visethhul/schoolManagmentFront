@@ -1,0 +1,25 @@
+.table-container {
+ background-color: #8e8a8a;
+ padding: 10px;
+}
+.ant-table {
+  background-color: #f2ecec;
+  font-size:small;
+  
+
+}
+table {
+   width:100%
+
+}
+table,th, td{
+  border:1px solid white;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 11px;
+}
+th,td{
+ background-color: rgb(138, 156, 150);
+ padding: 5px;
+ text-align: left;
+}

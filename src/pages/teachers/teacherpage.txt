@@ -1,0 +1,277 @@
+import React, { useEffect, useState } from "react";
+import { Button, Space, Table, Form, message } from "antd";
+import styles from "./TeacherPage.module.css";
+import { ApiRequest } from "../../utils/apiRequest";
+import TeacherViewPage from "./teacherViewPage";
+import TeacherEditPage from "./teacherEditPage";
+import TeacherDeletePage from "./teacherDeletePage";
+import TeacherAddPage from "./teacherAddPage";
+import TeacherSearch from "./teacherSearch";
+import TeacherExportToFile from "./TeacherExportToFile";
+
+const TeachersTable = () => {
+  // State Variables
+  const [teachers, setTeachers] = useState([]); // List of teachers
+  const [loading, setLoading] = useState(true); // Loading state
+  const [isModalVisible, setIsModalVisible] = useState(false); // View modal visibility
+  const [selectedTeacher, setSelectedTeacher] = useState(null); // Currently selected teacher
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false); // Edit modal visibility
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false); // Delete modal visibility
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false); // Add modal visibility
+  const [form] = Form.useForm(); // Form instance for managing form state
+  const [currentPage, setCurrentPage] = useState(1); // Current page number
+  const [pageSize, setPageSize] = useState(10); // Page size
+  const [selectedGenders, setSelectedGenders] = useState([]); // Selected genders for filtering
+  const [searchText, setSearchText] = useState(""); // Search text
+  const [searchedColumn, setSearchedColumn] = useState(""); // Searched column
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]); // Selected row keys
+
+  // Fetch teachers data from the API on component mount
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const response = await ApiRequest("teacher", "GET");
+        setTeachers(response.lists);
+      } catch (err) {
+        console.error("Error fetching teachers:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
+
+  // Handlers for view, edit, and delete actions
+  const handleView = (record) => {
+    setSelectedTeacher(record);
+    setIsModalVisible(true);
+  };
+
+  const handleEdit = (record) => {
+    setSelectedTeacher(record);
+    form.setFieldsValue(record);
+    setIsEditModalVisible(true);
+  };
+
+  const handleDelete = (record) => {
+    setSelectedTeacher(record);
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleViewCancel = () => {
+    setIsModalVisible(false);
+    setSelectedTeacher(null);
+  };
+
+  const handleEditCancel = () => {
+    setIsEditModalVisible(false);
+    setSelectedTeacher(null);
+    form.resetFields();
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalVisible(false);
+    setSelectedTeacher(null);
+  };
+
+  const handleEditSubmit = async (values) => {
+    try {
+      const response = await ApiRequest(`teacher/${selectedTeacher.id}`, "PUT", values);
+      setTeachers((prevTeachers) =>
+        prevTeachers.map((teacher) =>
+          teacher.id === selectedTeacher.id ? { ...teacher, ...values } : teacher
+        )
+      );
+      message.success("Teacher updated successfully");
+      setIsEditModalVisible(false);
+      setSelectedTeacher(null);
+    } catch (err) {
+      console.error("Error updating teacher:", err);
+      message.error("Failed to update teacher.");
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await ApiRequest(`teacher/${selectedTeacher.id}`, "DELETE");
+      setTeachers((prevTeachers) =>
+        prevTeachers.filter((t) => t.id !== selectedTeacher.id)
+      );
+      setIsDeleteModalVisible(false);
+      setSelectedTeacher(null);
+      message.success("Teacher deleted successfully");
+    } catch (err) {
+      console.error("Error deleting teacher:", err);
+      message.error("Failed to delete teacher.");
+    }
+  };
+
+  const handleAddSubmit = async (values) => {
+    try {
+      const response = await ApiRequest("teacher", "POST", values);
+      setTeachers([...teachers, response.teacher]);
+      setIsAddModalVisible(false);
+      form.resetFields();
+      message.success("Teacher added successfully");
+    } catch (err) {
+      console.error("Error adding teacher:", err);
+      message.error("Failed to add teacher.");
+    }
+  };
+
+  const handleTableChange = (pagination, filters) => {
+    setCurrentPage(pagination.current);
+    setPageSize(pagination.pageSize);
+    setSelectedGenders(filters.gender || []);
+  };
+
+  const filteredTeachers =
+    selectedGenders.length === 0
+      ? teachers
+      : teachers.filter((teacher) =>
+          selectedGenders.includes(teacher.gender.toLowerCase())
+        );
+
+  const { getColumnSearchProps } = TeacherSearch({
+    handleSearch: (selectedKeys, confirm, dataIndex) => {
+      confirm();
+      setSearchText(selectedKeys[0]);
+      setSearchedColumn(dataIndex);
+    },
+    handleReset: (clearFilters) => {
+      clearFilters();
+      setSearchText("");
+    },
+  });
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (selectedRowKeys) => {
+      setSelectedRowKeys(selectedRowKeys);
+    },
+    type: "checkbox",
+  };
+
+  const columns = [
+    {
+      title: "First Name",
+      dataIndex: "first_name",
+      key: "first_name",
+      ...getColumnSearchProps("first_name"),
+    },
+    {
+      title: "Second Name",
+      dataIndex: "second_name",
+      key: "second_name",
+      ...getColumnSearchProps("second_name"),
+    },
+    {
+      title: "Gender",
+      dataIndex: "gender",
+      key: "gender",
+      filters: [
+        { text: "Male", value: "male" },
+        { text: "Female", value: "female" },
+      ],
+      filterMultiple: true,
+    },
+    {
+      title: "Email Address",
+      dataIndex: "email_address",
+      key: "email_address",
+    },
+    {
+      title: "Phone Number",
+      dataIndex: "phone_number",
+      key: "phone_number",
+    },
+    {
+      title: "Address",
+      dataIndex: "address",
+      key: "address",
+    },
+    {
+      title:"Active",
+      dataIdex:"active",
+      key:"active",
+    },
+    {
+      title: "Action",
+      key: "action",
+      fixed: 'right',
+      render: (text, record) => (
+        <Space size="middle">
+          <Button type="link" onClick={() => handleView(record)}>
+            View
+          </Button>
+          <Button type="link" onClick={() => handleEdit(record)}>
+            Edit
+          </Button>
+          <Button type="link" onClick={() => handleDelete(record)}>
+            Delete
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className={styles["table-container"]}>
+      <Button type="primary" onClick={() => setIsAddModalVisible(true)}>
+        Add Teacher
+      </Button>
+      <Space>
+        <TeacherExportToFile teachers={teachers} selectedRowKeys={selectedRowKeys} />
+      </Space>
+      <Table
+        rowSelection={rowSelection}
+        columns={columns}
+        dataSource={filteredTeachers}
+        loading={loading}
+        rowKey="id"
+        className={styles["ant-table"]}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: filteredTeachers.length,
+          showSizeChanger: true,
+        }}
+        onChange={handleTableChange}
+      />
+      {/* Modals for view, edit, delete, and add */}
+      {isModalVisible && (
+        <TeacherViewPage
+          visible={isModalVisible}
+          onCancel={handleViewCancel}
+          teacher={selectedTeacher}
+        />
+      )}
+      {isEditModalVisible && (
+        <TeacherEditPage
+          visible={isEditModalVisible}
+          onCancel={handleEditCancel}
+          onSubmit={handleEditSubmit}
+          teacher={selectedTeacher}
+          form={form}
+        />
+      )}
+      {isDeleteModalVisible && (
+        <TeacherDeletePage
+          visible={isDeleteModalVisible}
+          onCancel={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
+      {isAddModalVisible && (
+        <TeacherAddPage
+          visible={isAddModalVisible}
+          onCancel={() => setIsAddModalVisible(false)}
+          onSubmit={handleAddSubmit}
+          form={form}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TeachersTable;
